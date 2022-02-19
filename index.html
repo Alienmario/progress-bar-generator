@@ -3,19 +3,46 @@
 
 <head>
     <style>
-        /*
-        * Copyright (c) 2012-2013 Thibaut Courouble
-        * http://www.cssflow.com
-        * Licensed under the MIT License
-        *
-        * Sass/SCSS source: https://goo.gl/UhXKg
-        * PSD by Vin Thomas: https://goo.gl/n1M2e
-        */
-
         body {
-            font: 13px/20px "Lucida Grande", Tahoma, Verdana, sans-serif;
-            color: #404040;
+            font: 13px/20px Arial, sans-serif;
+            color: #5c5c5c;
             background: #2a2a2a;
+            text-align: center;
+        }
+
+        #download {
+            color: rgb(221, 221, 221);
+            background-color: #b9955e;
+            text-shadow: 1px 1px 3px black;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 25px;
+            transition: 0.2s linear;
+        }
+
+        #download.ing {
+            color: rgb(179, 179, 179);
+            background: linear-gradient(124deg, #ff2400, #e81d1d, #e8b71d, #e3e81d, #1de840, #1ddde8, #2b1de8, #dd00f3, #dd00f3);
+            text-shadow: 1px 1px 1px black;
+            background-size: 1800% 1800%;
+            animation: rainbow 5s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rainbow {
+            0% {
+                background-position: 0% 82%
+            }
+
+            50% {
+                background-position: 100% 19%
+            }
+
+            100% {
+                background-position: 0% 82%
+            }
         }
 
         .container {
@@ -24,7 +51,15 @@
             width: fit-content;
             height: fit-content;
         }
-
+        
+        /*
+        * Copyright (c) 2012-2013 Thibaut Courouble
+        * http://www.cssflow.com
+        * Licensed under the MIT License
+        *
+        * Sass/SCSS source: https://goo.gl/UhXKg
+        * PSD by Vin Thomas: https://goo.gl/n1M2e
+        */
         .progress {
             width: 300px;
             background: rgba(0, 0, 0, 0.25);
@@ -55,29 +90,40 @@
         .progress>.progress-bar {
             background-color: #f2b01e;
         }
+
     </style>
 </head>
 
 <body>
+    <h2>
+        <form>
+            Width: <input value="300px" type="text"
+                oninput="document.querySelectorAll('.progress').forEach(e => e.style.width=this.value)">
+            Height: <input value="16px" type="text"
+                oninput="document.querySelectorAll('.progress-bar').forEach(e => e.style.height=this.value)">
+        </form>
+    </h2>
+    <button id="download">DOWNLOAD</button>
 
-    <div class="container">
-        <h1>
-            <button id="download">Download</button>
-        </h1>
-    </div>
+    <div class="container"></div>
 
     <script type="module">
         import JSZip from 'https://cdn.skypack.dev/jszip'
         import * as htmlToImage from "https://cdn.skypack.dev/html-to-image@1.9.0";
         import download from "https://cdn.skypack.dev/downloadjs";
 
-        const container = document.getElementsByClassName("container")[0];
-        for (let i = 0; i <= 100; i++) {
-            const capture = document.createElement("div");
-            capture.className = "capture";
-            createBar(capture, i);
-            container.appendChild(document.createTextNode(i));
-            container.appendChild(capture);
+        refresh();
+
+        function refresh() {
+            const container = document.querySelector(".container");
+            container.replaceChildren();
+            for (let i = 0; i <= 100; i++) {
+                const capture = document.createElement("div");
+                capture.className = "capture";
+                createBar(capture, i);
+                container.appendChild(document.createTextNode(i));
+                container.appendChild(capture);
+            }
         }
 
         function createBar(parent, percentage) {
@@ -92,23 +138,23 @@
             parent.appendChild(progress);
         }
 
-        document.getElementById("download").addEventListener('click', downloadAll);
+        var dlButton = document.getElementById("download");
 
-        async function downloadAll() {
+        dlButton.addEventListener('click', async function() {
+            dlButton.classList.add("ing");
+
             const zip = new JSZip();
             const list = document.querySelectorAll(".capture");
-            const promises = [];
+            
             for (let i = 0; i < list.length; i++) {
-                promises[i] = htmlToImage.toBlob(list[i]).then(function (blob) {
-                    zip.file(`progress-bar-${i}.png`, blob, { binary: true });
-                });
+                let blob = await htmlToImage.toBlob(list[i]);
+                zip.file(`progress-bar-${i}.png`, blob, { binary: true });
             };
-            await Promise.all(promises);
 
-            zip.generateAsync({ type: "blob" }).then(function (blob) {
-                download(blob, "progress-bars.zip");
-            });
-        }
+            download (await zip.generateAsync({ type: "blob" }), "progress-bars.zip");
+
+            dlButton.classList.remove("ing");
+        });
 
     </script>
 
