@@ -5,11 +5,20 @@
     <title>Progress bar generator</title>
 
     <style>
+        
         body {
             font: 13px/20px Arial, sans-serif;
             color: #5c5c5c;
             background: #2a2a2a;
             text-align: center;
+        }
+
+        input {
+            background-color: #414141;
+            color: rgb(221, 221, 221);
+            font-weight: bold;
+            text-shadow: 1px 1px 3px black;
+            width: 50px;
         }
 
         #download {
@@ -88,7 +97,6 @@
             -webkit-box-shadow: 0 0 1px 1px rgba(0, 0, 0, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
             box-shadow: 0 0 1px 1px rgba(0, 0, 0, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
         }
-
     </style>
 </head>
 
@@ -102,6 +110,11 @@
             Colors: <input id="cFrom" type="color" value="#f2b01e"> - <input id="cTo" type="color" value="#f2b01e">
         </form>
     </h2>
+    <h3>
+        <form>
+            Download scale: <input id="dScale" type="number" min="1" value="1">
+        </form>
+    </h3>
     <button id="download">DOWNLOAD</button>
     <div class="container"></div>
 
@@ -109,7 +122,7 @@
         import JSZip from 'https://cdn.skypack.dev/jszip'
         import * as htmlToImage from "https://cdn.skypack.dev/html-to-image@1.9.0";
         import download from "https://cdn.skypack.dev/downloadjs";
-        
+
         const cFrom = document.querySelector("#cFrom");
         const cTo = document.querySelector("#cTo");
         cFrom.oninput = cTo.oninput = recolor;
@@ -151,10 +164,11 @@
             this.classList.add("ing");
 
             const zip = new JSZip();
+            const scale = document.querySelector("#dScale").value;
             const list = document.querySelectorAll(".capture");
 
             for (let i = 0; i < list.length; i++) {
-                let blob = await htmlToImage.toBlob(list[i]);
+                let blob = await htmlToImage.toBlob(list[i], { pixelRatio: scale });
                 zip.file(`progress-bar-${i}.png`, blob, { binary: true });
             };
 
@@ -182,7 +196,7 @@
             }
             return rgba;
         }
-        
+
         function blendColors(from, to, p = 0.5) {
             const r = Math.round;
             from = from.trim();
