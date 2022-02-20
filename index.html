@@ -2,6 +2,8 @@
 <html>
 
 <head>
+    <title>Progress bar generator</title>
+
     <style>
         body {
             font: 13px/20px Arial, sans-serif;
@@ -51,7 +53,7 @@
             width: fit-content;
             height: fit-content;
         }
-        
+
         /*
         * Copyright (c) 2012-2013 Thibaut Courouble
         * http://www.cssflow.com
@@ -87,10 +89,6 @@
             box-shadow: 0 0 1px 1px rgba(0, 0, 0, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
         }
 
-        .progress>.progress-bar {
-            background-color: #f2b01e;
-        }
-
     </style>
 </head>
 
@@ -101,18 +99,23 @@
                 oninput="document.querySelectorAll('.progress').forEach(e => e.style.width=this.value)">
             Height: <input value="16px" type="text"
                 oninput="document.querySelectorAll('.progress-bar').forEach(e => e.style.height=this.value)">
+            Colors: <input id="cFrom" type="color" value="#f2b01e"> - <input id="cTo" type="color" value="#f2b01e">
         </form>
     </h2>
     <button id="download">DOWNLOAD</button>
-
     <div class="container"></div>
 
     <script type="module">
         import JSZip from 'https://cdn.skypack.dev/jszip'
         import * as htmlToImage from "https://cdn.skypack.dev/html-to-image@1.9.0";
         import download from "https://cdn.skypack.dev/downloadjs";
+        
+        const cFrom = document.querySelector("#cFrom");
+        const cTo = document.querySelector("#cTo");
+        cFrom.oninput = cTo.oninput = recolor;
 
         refresh();
+        recolor();
 
         function refresh() {
             const container = document.querySelector(".container");
@@ -138,23 +141,79 @@
             parent.appendChild(progress);
         }
 
-        var dlButton = document.getElementById("download");
+        function recolor() {
+            document.querySelectorAll(".progress-bar").forEach(bar => {
+                bar.style.backgroundColor = blendColors(cFrom.value, cTo.value, parseFloat(bar.style.width) / 100);
+            });
+        };
 
-        dlButton.addEventListener('click', async function() {
-            dlButton.classList.add("ing");
+        document.getElementById("download").onclick = async function () {
+            this.classList.add("ing");
 
             const zip = new JSZip();
             const list = document.querySelectorAll(".capture");
-            
+
             for (let i = 0; i < list.length; i++) {
                 let blob = await htmlToImage.toBlob(list[i]);
                 zip.file(`progress-bar-${i}.png`, blob, { binary: true });
             };
 
-            download (await zip.generateAsync({ type: "blob" }), "progress-bars.zip");
+            download(await zip.generateAsync({ type: "blob" }), "progress-bars.zip");
 
-            dlButton.classList.remove("ing");
-        });
+            this.classList.remove("ing");
+        };
+
+        function toRGBA(d) {
+            const l = d.length;
+            const rgba = {};
+            if (d.slice(0, 3).toLowerCase() === 'rgb') {
+                d = d.replace(' ', '').split(',');
+                rgba[0] = parseInt(d[0].slice(d[3].toLowerCase() === 'a' ? 5 : 4), 10);
+                rgba[1] = parseInt(d[1], 10);
+                rgba[2] = parseInt(d[2], 10);
+                rgba[3] = d[3] ? parseFloat(d[3]) : -1;
+            } else {
+                if (l < 6) d = parseInt(String(d[1]) + d[1] + d[2] + d[2] + d[3] + d[3] + (l > 4 ? String(d[4]) + d[4] : ''), 16);
+                else d = parseInt(d.slice(1), 16);
+                rgba[0] = (d >> 16) & 255;
+                rgba[1] = (d >> 8) & 255;
+                rgba[2] = d & 255;
+                rgba[3] = l === 9 || l === 5 ? r((((d >> 24) & 255) / 255) * 10000) / 10000 : -1;
+            }
+            return rgba;
+        }
+        
+        function blendColors(from, to, p = 0.5) {
+            const r = Math.round;
+            from = from.trim();
+            to = to.trim();
+            const b = p < 0;
+            p = b ? p * -1 : p;
+            const f = toRGBA(from);
+            const t = toRGBA(to);
+            if (to[0] === 'r') {
+                return 'rgb' + (to[3] === 'a' ? 'a(' : '(') +
+                    r(((t[0] - f[0]) * p) + f[0]) + ',' +
+                    r(((t[1] - f[1]) * p) + f[1]) + ',' +
+                    r(((t[2] - f[2]) * p) + f[2]) + (
+                        f[3] < 0 && t[3] < 0 ? '' : ',' + (
+                            f[3] > -1 && t[3] > -1
+                                ? r((((t[3] - f[3]) * p) + f[3]) * 10000) / 10000
+                                : t[3] < 0 ? f[3] : t[3]
+                        )
+                    ) + ')';
+            }
+
+            return '#' + (0x100000000 + ((
+                f[3] > -1 && t[3] > -1
+                    ? r((((t[3] - f[3]) * p) + f[3]) * 255)
+                    : t[3] > -1 ? r(t[3] * 255) : f[3] > -1 ? r(f[3] * 255) : 255
+            ) * 0x1000000) +
+                (r(((t[0] - f[0]) * p) + f[0]) * 0x10000) +
+                (r(((t[1] - f[1]) * p) + f[1]) * 0x100) +
+                r(((t[2] - f[2]) * p) + f[2])
+            ).toString(16).slice(f[3] > -1 || t[3] > -1 ? 1 : 3);
+        }
 
     </script>
 
